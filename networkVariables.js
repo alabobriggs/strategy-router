@@ -1,7 +1,6 @@
 function bnbChain() {
 
   const bnb = {
-
     busd: "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56",
     usdc: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
     usdt: "0x55d398326f99059fF775485246999027B3197955",
@@ -9,11 +8,11 @@ function bnbChain() {
 
     bsw: "0x965f527d9159dce6288a2219db51fc6eef120dd1",
 
-    // current token holders for tests, 
+    // current token holders for tests,
     // may not work based on block number used in forking, in such case try find other holders
     busdHolder: "0xf977814e90da44bfa03b6295a0616a897441acec",
-    usdcHolder: "0xf977814e90da44bfa03b6295a0616a897441acec",
-    usdtHolder: "0xf977814e90da44bfa03b6295a0616a897441acec"
+    usdcHolder: "0x5a52e96bacdabb82fd05763e25335261b270efcb",
+    usdtHolder: "0xf977814e90da44bfa03b6295a0616a897441acec",
   };
 
   // acryptos curve-like pool
