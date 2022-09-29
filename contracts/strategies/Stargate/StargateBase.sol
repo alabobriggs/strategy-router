@@ -30,6 +30,7 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
     IStargateRouter internal constant stargateRouter = IStargateRouter(0x4a364f8c717cAAD9A442737Eb7b8A55cc6cf18D8);
 
     uint256 internal immutable poolId;
+    uint256 internal immutable farmPoolId;
 
     uint256 private constant PERCENT_DENOMINATOR = 10000;
 
@@ -42,6 +43,7 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
     constructor(
         StrategyRouter _strategyRouter,
         uint256 _poolId,
+        uint256 _farmPoolId,
         ERC20 _tokenA,
         ERC20 _lpToken
     ) {
@@ -49,6 +51,7 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
         poolId = _poolId;
         tokenA = _tokenA;
         lpToken = _lpToken;
+        farmPoolId = _farmPoolId
 
         // lock implementation
         _disableInitializers();
@@ -73,7 +76,7 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
 
         uint256 lpAmount = lpToken.balanceOf(address(this));
         lpToken.approve(address(farm), lpAmount);
-        farm.deposit(poolId, lpAmount);
+        farm.deposit(farmPoolId, lpAmount);
     }
 
     function withdraw(uint256 strategyTokenAmountToWithdraw)
@@ -83,7 +86,7 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
         returns (uint256 amountWithdrawn)
     {
         if (strategyTokenAmountToWithdraw > 0) {
-            farm.withdraw(poolId, strategyTokenAmountToWithdraw);
+            farm.withdraw(farmPoolId, strategyTokenAmountToWithdraw);
 
             uint256 lpAmount = lpToken.balanceOf(address(this));
             lpToken.approve(address(stargateRouter), lpAmount);
@@ -104,7 +107,7 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
 
     function compound() external override onlyOwner {
         // inside withdraw happens STG rewards collection
-        farm.withdraw(poolId, 0);
+        farm.withdraw(farmPoolId, 0);
         // use balance because STG is harvested on deposit and withdraw calls
         uint256 stgAmount = stg.balanceOf(address(this));
 
@@ -118,12 +121,12 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
 
             uint256 lpAmount = lpToken.balanceOf(address(this));
             lpToken.approve(address(farm), lpAmount);
-            farm.deposit(poolId, lpAmount);
+            farm.deposit(farmPoolId, lpAmount);
         }
     }
 
     function totalTokens() external view override returns (uint256) {
-        (uint256 liquidity, ) = farm.userInfo(poolId, address(this));
+        (uint256 liquidity, ) = farm.userInfo(farmPoolId, address(this));
 
         uint256 _totalSupply = lpToken.totalSupply();
         // this formula is from uniswap.remove_liquidity -> uniswapPair.burn function
@@ -134,9 +137,9 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
     }
 
     function withdrawAll() external override onlyOwner returns (uint256 amountWithdrawn) {
-        (uint256 amount, ) = farm.userInfo(poolId, address(this));
+        (uint256 amount, ) = farm.userInfo(farmPoolId, address(this));
         if (amount > 0) {
-            farm.withdraw(poolId, amount);
+            farm.withdraw(farmPoolId, amount);
             uint256 lpAmount = lpToken.balanceOf(address(this));
             lpToken.approve(address(stargateRouter), lpAmount);
             stargateRouter.instantRedeemLocal(

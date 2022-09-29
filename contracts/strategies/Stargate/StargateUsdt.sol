@@ -9,7 +9,8 @@ contract StargateUsdt is StargateBase {
     constructor(StrategyRouter _strategyRouter)
         StargateBase(
             _strategyRouter,
-            0, // poolId
+            2, // poolId
+            0, // farmPoolId
             ERC20(0x55d398326f99059fF775485246999027B3197955), // tokenA - USDT 
             ERC20(0x9aA83081AA06AF7208Dcc7A4cB72C94d057D2cda) // lpToken USDT
         )
