@@ -11,9 +11,9 @@ import "../../interfaces/stargate/IStargateRouter.sol";
 
 import "hardhat/console.sol";
 
-// Base contract to be inherited, works with biswap MasterChef:
-// address on BNB Chain: 0xDbc1A13490deeF9c3C12b44FE77b503c1B061739
-// their code on github: https://github.com/biswap-org/staking/blob/main/contracts/MasterChef.sol
+// Base contract to be inherited, works with Stargate LPstaking:
+// address on BNB Chain: 0x3052A0F6ab15b4AE1df39962d5DdEFacA86DaB47
+// their code on github: https://github.com/stargate-protocol/stargate/blob/main/contracts/LPStaking.sol
 
 /// @custom:oz-upgrades-unsafe-allow constructor state-variable-immutable
 contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, IStrategy {
@@ -25,9 +25,9 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
     ERC20 internal immutable lpToken;
     StrategyRouter internal immutable strategyRouter;
 
-    ERC20 internal constant bsw = ERC20(0x965F527D9159dCe6288a2219DB51fc6Eef120dD1);
-    IStargateFarm internal constant farm = IStargateFarm(0xDbc1A13490deeF9c3C12b44FE77b503c1B061739);
-    IStargateRouter internal constant stargateRouter = IStargateRouter(0x3a6d8cA21D1CF76F653A67577FA0D27453350dD8);
+    ERC20 internal constant stg = ERC20(0xB0D502E938ed5f4df2E681fE6E419ff29631d62b);
+    IStargateFarm internal constant farm = IStargateFarm(0x3052A0F6ab15b4AE1df39962d5DdEFacA86DaB47);
+    IStargateRouter internal constant stargateRouter = IStargateRouter(0x4a364f8c717cAAD9A442737Eb7b8A55cc6cf18D8);
 
     uint256 internal immutable poolId;
 
@@ -108,7 +108,7 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
         // inside withdraw happens BSW rewards collection
         farm.withdraw(poolId, 0);
         // use balance because BSW is harvested on deposit and withdraw calls
-        uint256 bswAmount = bsw.balanceOf(address(this));
+        uint256 bswAmount = stg.balanceOf(address(this));
 
         if (bswAmount > 0) {
             fix_leftover(0);
@@ -200,18 +200,18 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
         }
     }
 
-    // swap bsw for tokenA & tokenB in proportions 50/50
+    // swap stg for tokenA & tokenB in proportions 50/50
     function sellReward(uint256 bswAmount) private returns (uint256 receivedA, uint256 receivedB) {
         // sell for lp ratio
         uint256 amountA = bswAmount / 2;
         uint256 amountB = bswAmount - amountA;
 
         Exchange exchange = strategyRouter.getExchange();
-        bsw.transfer(address(exchange), amountA);
-        receivedA = exchange.swap(amountA, address(bsw), address(tokenA), address(this));
+        stg.transfer(address(exchange), amountA);
+        receivedA = exchange.swap(amountA, address(stg), address(tokenA), address(this));
 
-        bsw.transfer(address(exchange), amountB);
-        receivedB = exchange.swap(amountB, address(bsw), address(tokenB), address(this));
+        stg.transfer(address(exchange), amountB);
+        receivedB = exchange.swap(amountB, address(stg), address(tokenB), address(this));
 
         (receivedA, receivedB) = collectProtocolCommission(receivedA, receivedB);
     }
