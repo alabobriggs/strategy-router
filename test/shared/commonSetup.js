@@ -130,6 +130,7 @@ async function setupTestParams(router, oracle, exchange, usdc, usdt, busd) {
   await oracle.setPrice(usdc.address, usdcAmount);
 
   let bsw = hre.networkVariables.bsw;
+  let stg = hre.networkVariables.stg;
 
   let pancakePlugin = await deploy("UniswapPlugin");
   let pancake = (pancakePlugin).address;
@@ -137,8 +138,17 @@ async function setupTestParams(router, oracle, exchange, usdc, usdt, busd) {
   busd = busd.address;
   usdc = usdc.address;
   usdt = usdt.address;
+
+  // bst route
   await exchange.setRoute(
     [busd, busd, usdc, bsw, bsw, bsw],
+    [usdt, usdc, usdt, busd, usdt, usdc],
+    [pancake, pancake, pancake, pancake, pancake, pancake]
+  );
+
+  // stg route
+  await exchange.setRoute(
+    [busd, busd, usdc, stg, stg, stg],
     [usdt, usdc, usdt, busd, usdt, usdc],
     [pancake, pancake, pancake, pancake, pancake, pancake]
   );
@@ -148,7 +158,6 @@ async function setupTestParams(router, oracle, exchange, usdc, usdt, busd) {
   // await pancakePlugin.setUseWeth(bsw, busd, true);
   // await pancakePlugin.setUseWeth(bsw, usdt, true);
   // await pancakePlugin.setUseWeth(bsw, usdc, true);
-
 }
 
 async function setupRouterParams(router, oracle, exchange) {
@@ -173,6 +182,7 @@ async function setupFakePrices(oracle, usdc, usdt, busd) {
 
 async function setupPancakePlugin(exchange, usdc, usdt, busd) {
   let bsw = hre.networkVariables.bsw;
+  let stg = hre.networkVariables.stg;
 
   let pancakePlugin = await deploy("UniswapPlugin");
   let pancake = (pancakePlugin).address;
@@ -180,8 +190,17 @@ async function setupPancakePlugin(exchange, usdc, usdt, busd) {
   busd = busd.address;
   usdc = usdc.address;
   usdt = usdt.address;
+
+  // bsw route
   await exchange.setRoute(
       [busd, busd, usdc, bsw, bsw, bsw],
+      [usdt, usdc, usdt, busd, usdt, usdc],
+      [pancake, pancake, pancake, pancake, pancake, pancake]
+  );
+
+  // stg route
+  await exchange.setRoute(
+      [busd, busd, usdc, stg, stg, stg],
       [usdt, usdc, usdt, busd, usdt, usdc],
       [pancake, pancake, pancake, pancake, pancake, pancake]
   );
@@ -208,6 +227,7 @@ async function setupParamsOnBNB(router, oracle, exchange) {
 async function setupPluginsOnBNB(exchange) {
 
   let bsw = hre.networkVariables.bsw;
+  let stg = hre.networkVariables.stg;
   let busd = hre.networkVariables.busd;
   let usdt = hre.networkVariables.usdt;
   let usdc = hre.networkVariables.usdc;
@@ -216,9 +236,17 @@ async function setupPluginsOnBNB(exchange) {
   let acsPlugin = await deploy("CurvePlugin");
   let pancakePlugin = await deploy("UniswapPlugin");
 
-  // Setup exchange params
+  // Setup bsw exchange params
   await exchange.setRoute(
     [busd, busd, usdc, bsw, bsw, bsw],
+    [usdt, usdc, usdt, busd, usdt, usdc],
+    [acsPlugin.address, acsPlugin.address, acsPlugin.address, 
+      pancakePlugin.address, pancakePlugin.address, pancakePlugin.address]
+  );
+
+  // Setup stg exchange params
+  await exchange.setRoute(
+    [busd, busd, usdc, stg, stg, stg],
     [usdt, usdc, usdt, busd, usdt, usdc],
     [acsPlugin.address, acsPlugin.address, acsPlugin.address, 
       pancakePlugin.address, pancakePlugin.address, pancakePlugin.address]
@@ -239,4 +267,7 @@ async function setupPluginsOnBNB(exchange) {
   await pancakePlugin.setUseWeth(bsw, busd, true);
   await pancakePlugin.setUseWeth(bsw, usdt, true);
   await pancakePlugin.setUseWeth(bsw, usdc, true);
+  await pancakePlugin.setUseWeth(stg, busd, true);
+  await pancakePlugin.setUseWeth(stg, usdt, true);
+  await pancakePlugin.setUseWeth(stg, usdc, true);
 }

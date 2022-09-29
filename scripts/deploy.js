@@ -103,6 +103,9 @@ async function main() {
   await (await pancakePlugin.setUseWeth(hre.networkVariables.bsw, hre.networkVariables.busd, true)).wait();
   await (await pancakePlugin.setUseWeth(hre.networkVariables.bsw, hre.networkVariables.usdt, true)).wait();
   await (await pancakePlugin.setUseWeth(hre.networkVariables.bsw, hre.networkVariables.usdc, true)).wait();
+  await (await pancakePlugin.setUseWeth(hre.networkVariables.stg, hre.networkVariables.busd, true)).wait();
+  await (await pancakePlugin.setUseWeth(hre.networkVariables.stg, hre.networkVariables.usdt, true)).wait();
+  await (await pancakePlugin.setUseWeth(hre.networkVariables.stg, hre.networkVariables.usdc, true)).wait();
 
   // acryptos plugin params
   console.log("acryptos plugin setup...");
@@ -128,7 +131,7 @@ async function main() {
   )).wait();
 
   // setup Exchange routes
-  console.log("exchange routes setup...");
+  console.log("bsw exchange routes setup...");
   await (await exchange.setRouteEx(
     [
       hre.networkVariables.busd,
@@ -155,6 +158,60 @@ async function main() {
       { defaultRoute: pancakePlugin.address, limit: 0, secondRoute: ethers.constants.AddressZero  },
     ]
   )).wait();
+
+  console.log("stg exchange routes setup...");
+  await (
+    await exchange.setRouteEx(
+      [
+        hre.networkVariables.busd,
+        hre.networkVariables.busd,
+        hre.networkVariables.usdc,
+        hre.networkVariables.stg,
+        hre.networkVariables.stg,
+        hre.networkVariables.stg,
+      ],
+      [
+        hre.networkVariables.usdt,
+        hre.networkVariables.usdc,
+        hre.networkVariables.usdt,
+        hre.networkVariables.busd,
+        hre.networkVariables.usdt,
+        hre.networkVariables.usdc,
+      ],
+      [
+        {
+          defaultRoute: acsPlugin.address,
+          limit: parseUnits("100000", 12),
+          secondRoute: pancakePlugin.address,
+        },
+        {
+          defaultRoute: acsPlugin.address,
+          limit: parseUnits("100000", 12),
+          secondRoute: pancakePlugin.address,
+        },
+        {
+          defaultRoute: acsPlugin.address,
+          limit: parseUnits("100000", 12),
+          secondRoute: pancakePlugin.address,
+        },
+        {
+          defaultRoute: pancakePlugin.address,
+          limit: 0,
+          secondRoute: ethers.constants.AddressZero,
+        },
+        {
+          defaultRoute: pancakePlugin.address,
+          limit: 0,
+          secondRoute: ethers.constants.AddressZero,
+        },
+        {
+          defaultRoute: pancakePlugin.address,
+          limit: 0,
+          secondRoute: ethers.constants.AddressZero,
+        },
+      ]
+    )
+  ).wait();
 
   // setup Batch addresses
   console.log("Batch settings setup...");

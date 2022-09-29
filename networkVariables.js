@@ -7,7 +7,7 @@ function bnbChain() {
     dai: "0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3",
 
     bsw: "0x965f527d9159dce6288a2219db51fc6eef120dd1",
-
+    stg: "0xB0D502E938ed5f4df2E681fE6E419ff29631d62b",
     // current token holders for tests,
     // may not work based on block number used in forking, in such case try find other holders
     busdHolder: "0xf977814e90da44bfa03b6295a0616a897441acec",
