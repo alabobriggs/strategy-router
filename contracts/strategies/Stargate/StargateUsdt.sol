@@ -5,7 +5,7 @@ import "../../StrategyRouter.sol";
 import "./StargateBase.sol";
 
 /// @custom:oz-upgrades-unsafe-allow constructor state-variable-immutable
-contract StargateBusdUsdt is StargateBase {
+contract StargateUsdt is StargateBase {
     constructor(StrategyRouter _strategyRouter)
         StargateBase(
             _strategyRouter,
