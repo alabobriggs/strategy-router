@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/tokenA/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "../../interfaces/IStrategy.sol";
@@ -84,27 +84,24 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
         onlyOwner
         returns (uint256 amountWithdrawn)
     {
-        address token0 = IUniswapV2Pair(address(lpToken)).token0();
-        // address token1 = IUniswapV2Pair(address(lpToken)).token1();
-        uint256 balance0 = IERC20(token0).balanceOf(address(lpToken));
-        // uint256 balance1 = IERC20(token1).balanceOf(address(lpToken));
+        if (strategyTokenAmountToWithdraw > 0) {
+            farm.withdraw(poolId, strategyTokenAmountToWithdraw);
 
-        uint256 amountA = strategyTokenAmountToWithdraw / 2;
-        // uint256 amountB = strategyTokenAmountToWithdraw - amountA;
+            uint256 lpAmount = lpToken.balanceOf(address(this));
+            lpToken.approve(address(stargateRouter), lpAmount);
+            stargateRouter.instantRedeemLocal(
+                poolId,
+                lpToken.balanceOf(address(this)),
+                address(this)
+            );
+        }
 
-        // amountB = stargateRouter.quote(amountB, balance0, balance1);
+        uint256 amountA = tokenA.balanceOf(address(this));
 
-        uint256 liquidityToRemove = (lpToken.totalSupply() * (amountA)) / (balance0);
-
-        farm.withdraw(poolId, liquidityToRemove);
-        lpToken.approve(address(stargateRouter), liquidityToRemove);
-
-        (amountA) = stargateRouter.instantRedeemLocal(poolId, liquidityToRemove, address(this));
-
-        Exchange exchange = strategyRouter.getExchange();
-
-        tokenA.transfer(msg.sender, amountA);
-        return amountA;
+        if (amountA > 0) {
+            tokenA.transfer(msg.sender, amountA);
+            return amountA;
+        }
     }
 
     function compound() external override onlyOwner {
@@ -169,25 +166,15 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
             farm.withdraw(poolId, amount);
             uint256 lpAmount = lpToken.balanceOf(address(this));
             lpToken.approve(address(stargateRouter), lpAmount);
-            stargateRouter.removeLiquidity(
-                address(tokenA),
-                address(tokenB),
+            stargateRouter.instantRedeemLocal(
+                poolId,
                 lpToken.balanceOf(address(this)),
-                0,
-                0,
-                address(this),
-                block.timestamp
+                address(this)
             );
         }
 
         uint256 amountA = tokenA.balanceOf(address(this));
-        uint256 amountB = tokenB.balanceOf(address(this));
 
-        if (amountB > 0) {
-            Exchange exchange = strategyRouter.getExchange();
-            tokenB.transfer(address(exchange), amountB);
-            amountA += exchange.swap(amountB, address(tokenB), address(tokenA), address(this));
-        }
         if (amountA > 0) {
             tokenA.transfer(msg.sender, amountA);
             return amountA;
