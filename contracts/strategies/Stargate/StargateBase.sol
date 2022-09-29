@@ -51,7 +51,7 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
         poolId = _poolId;
         tokenA = _tokenA;
         lpToken = _lpToken;
-        farmPoolId = _farmPoolId
+        farmPoolId = _farmPoolId;
 
         // lock implementation
         _disableInitializers();
