@@ -84,7 +84,7 @@ module.exports = function strategyTest(strategyName) {
 
       amountWithdraw = await strategy.totalTokens();
       let balanceBefore = await depositToken.balanceOf(owner.address);
-      await strategy.withdraw(amountWithdraw);
+      await strategy.withdrawAll();
       let balanceAfter = await depositToken.balanceOf(owner.address);
       let totalTokens = await strategy.totalTokens();
 
