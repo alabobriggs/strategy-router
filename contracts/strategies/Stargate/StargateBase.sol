@@ -1,13 +1,13 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/tokenA/ERC20/IERC20.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "../../interfaces/IStrategy.sol";
 import "../../StrategyRouter.sol";
 
-import "../../interfaces/IStargateFarm.sol";
-import "../../interfaces/IStargateRouter.sol";
+import "../../interfaces/stargate/IStargateFarm.sol";
+import "../../interfaces/stargate/IStargateRouter.sol";
 
 import "hardhat/console.sol";
 
@@ -20,8 +20,8 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
     error CallerUpgrader();
 
     address internal upgrader;
-    
-    ERC20 internal immutable token;
+
+    ERC20 internal immutable tokenA;
     ERC20 internal immutable lpToken;
     StrategyRouter internal immutable strategyRouter;
 
@@ -49,10 +49,10 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
     ) {
         strategyRouter = _strategyRouter;
         poolId = _poolId;
-        token = _tokenA;
+        tokenA = _tokenA;
         lpToken = _lpToken;
         LEFTOVER_THRESHOLD_TOKEN_A = 10**_tokenA.decimals();
-        
+
         // lock implementation
         _disableInitializers();
     }
@@ -66,18 +66,13 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
     function _authorizeUpgrade(address newImplementation) internal override onlyUpgrader {}
 
     function depositToken() external view override returns (address) {
-        return address(token);
+        return address(tokenA);
     }
 
     function deposit(uint256 amount) external override onlyOwner {
+        tokenA.approve(address(stargateRouter), amount);
 
-        token.approve(address(stargateRouter), amount);
-
-        stargateRouter.addLiquidity(
-            poolId,
-            amount,
-            address(this)
-        );
+        stargateRouter.addLiquidity(poolId, amount, address(this));
 
         lpToken.approve(address(farm), amount);
         farm.deposit(poolId, amount);
@@ -92,26 +87,23 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
         address token0 = IUniswapV2Pair(address(lpToken)).token0();
         // address token1 = IUniswapV2Pair(address(lpToken)).token1();
         uint256 balance0 = IERC20(token0).balanceOf(address(lpToken));
-        uint256 balance1 = IERC20(token1).balanceOf(address(lpToken));
+        // uint256 balance1 = IERC20(token1).balanceOf(address(lpToken));
 
         uint256 amountA = strategyTokenAmountToWithdraw / 2;
-        uint256 amountB = strategyTokenAmountToWithdraw - amountA;
+        // uint256 amountB = strategyTokenAmountToWithdraw - amountA;
 
-        (balance0, balance1) = token0 == address(token) ? (balance0, balance1) : (balance1, balance0);
+        // amountB = stargateRouter.quote(amountB, balance0, balance1);
 
-        amountB = stargateRouter.quote(amountB, balance0, balance1);
-
-        uint256 liquidityToRemove = (lpToken.totalSupply() * (amountA + amountB)) / (balance0 + balance1);
+        uint256 liquidityToRemove = (lpToken.totalSupply() * (amountA)) / (balance0);
 
         farm.withdraw(poolId, liquidityToRemove);
         lpToken.approve(address(stargateRouter), liquidityToRemove);
 
-        (amountA, amountB) = stargateRouter.instantRedeemLocal(poolId, _amountLP, address(this));
+        (amountA) = stargateRouter.instantRedeemLocal(poolId, liquidityToRemove, address(this));
 
         Exchange exchange = strategyRouter.getExchange();
-        tokenB.transfer(address(exchange), amountB);
-        amountA += exchange.swap(amountB, address(tokenB), address(token), address(this));
-        token.transfer(msg.sender, amountA);
+
+        tokenA.transfer(msg.sender, amountA);
         return amountA;
     }
 
@@ -124,14 +116,14 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
         if (bswAmount > 0) {
             fix_leftover(0);
             sellReward(bswAmount);
-            uint256 balanceA = token.balanceOf(address(this));
+            uint256 balanceA = tokenA.balanceOf(address(this));
             uint256 balanceB = tokenB.balanceOf(address(this));
 
-            token.approve(address(stargateRouter), balanceA);
+            tokenA.approve(address(stargateRouter), balanceA);
             tokenB.approve(address(stargateRouter), balanceB);
 
             stargateRouter.addLiquidity(
-                address(token),
+                address(tokenA),
                 address(tokenB),
                 balanceA,
                 balanceB,
@@ -152,7 +144,7 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
 
         uint256 _totalSupply = lpToken.totalSupply();
         // this formula is from uniswap.remove_liquidity -> uniswapPair.burn function
-        uint256 balanceA = token.balanceOf(address(lpToken));
+        uint256 balanceA = tokenA.balanceOf(address(lpToken));
         uint256 balanceB = tokenB.balanceOf(address(lpToken));
         uint256 amountA = (liquidity * balanceA) / _totalSupply;
         uint256 amountB = (liquidity * balanceB) / _totalSupply;
@@ -164,7 +156,7 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
                 ? (balanceB, balanceA)
                 : (balanceA, balanceB);
 
-            // convert amountB to amount token
+            // convert amountB to amount tokenA
             amountA += stargateRouter.quote(amountB, _reserve0, _reserve1);
         }
 
@@ -178,7 +170,7 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
             uint256 lpAmount = lpToken.balanceOf(address(this));
             lpToken.approve(address(stargateRouter), lpAmount);
             stargateRouter.removeLiquidity(
-                address(token),
+                address(tokenA),
                 address(tokenB),
                 lpToken.balanceOf(address(this)),
                 0,
@@ -188,16 +180,16 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
             );
         }
 
-        uint256 amountA = token.balanceOf(address(this));
+        uint256 amountA = tokenA.balanceOf(address(this));
         uint256 amountB = tokenB.balanceOf(address(this));
 
         if (amountB > 0) {
             Exchange exchange = strategyRouter.getExchange();
             tokenB.transfer(address(exchange), amountB);
-            amountA += exchange.swap(amountB, address(tokenB), address(token), address(this));
+            amountA += exchange.swap(amountB, address(tokenB), address(tokenA), address(this));
         }
         if (amountA > 0) {
-            token.transfer(msg.sender, amountA);
+            tokenA.transfer(msg.sender, amountA);
             return amountA;
         }
     }
@@ -206,22 +198,22 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
     function fix_leftover(uint256 amountIgnore) private {
         Exchange exchange = strategyRouter.getExchange();
         uint256 amountB = tokenB.balanceOf(address(this));
-        uint256 amountA = token.balanceOf(address(this)) - amountIgnore;
+        uint256 amountA = tokenA.balanceOf(address(this)) - amountIgnore;
         uint256 toSwap;
         if (amountB > amountA && (toSwap = amountB - amountA) > LEFTOVER_THRESHOLD_TOKEN_B) {
-            uint256 dexFee = exchange.getFee(toSwap / 2, address(token), address(tokenB));
+            uint256 dexFee = exchange.getFee(toSwap / 2, address(tokenA), address(tokenB));
             toSwap = calculateSwapAmount(toSwap / 2, dexFee);
             tokenB.transfer(address(exchange), toSwap);
-            exchange.swap(toSwap, address(tokenB), address(token), address(this));
+            exchange.swap(toSwap, address(tokenB), address(tokenA), address(this));
         } else if (amountA > amountB && (toSwap = amountA - amountB) > LEFTOVER_THRESHOLD_TOKEN_A) {
-            uint256 dexFee = exchange.getFee(toSwap / 2, address(token), address(tokenB));
+            uint256 dexFee = exchange.getFee(toSwap / 2, address(tokenA), address(tokenB));
             toSwap = calculateSwapAmount(toSwap / 2, dexFee);
-            token.transfer(address(exchange), toSwap);
-            exchange.swap(toSwap, address(token), address(tokenB), address(this));
+            tokenA.transfer(address(exchange), toSwap);
+            exchange.swap(toSwap, address(tokenA), address(tokenB), address(this));
         }
     }
 
-    // swap bsw for token & tokenB in proportions 50/50
+    // swap bsw for tokenA & tokenB in proportions 50/50
     function sellReward(uint256 bswAmount) private returns (uint256 receivedA, uint256 receivedB) {
         // sell for lp ratio
         uint256 amountA = bswAmount / 2;
@@ -229,7 +221,7 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
 
         Exchange exchange = strategyRouter.getExchange();
         bsw.transfer(address(exchange), amountA);
-        receivedA = exchange.swap(amountA, address(bsw), address(token), address(this));
+        receivedA = exchange.swap(amountA, address(bsw), address(tokenA), address(this));
 
         bsw.transfer(address(exchange), amountB);
         receivedB = exchange.swap(amountB, address(bsw), address(tokenB), address(this));
@@ -250,9 +242,9 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
 
             // equation: (a - (c*v))/(b - (c-c*v)) = z/x
             // solution for v = (a*x - b*z + c*z) / (c * (z+x))
-            // a,b is current token amounts, z,x is pair reserves, c is total fee amount to take from a+b
+            // a,b is current tokenA amounts, z,x is pair reserves, c is total fee amount to take from a+b
             // v is ratio to apply to feeAmount and take fee from a and b
-            // a and z should be converted to same decimals as token b (TODO for cases when decimals are different)
+            // a and z should be converted to same decimals as tokenA b (TODO for cases when decimals are different)
             int256 numerator = int256(amountA * r1 + feeAmount * r0) - int256(amountB * r0);
             int256 denominator = int256(feeAmount * (r0 + r1));
             int256 ratio = (numerator * 1e18) / denominator;
@@ -265,11 +257,11 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
         }
 
         // these two have same decimals, should adjust A to have A decimals,
-        // this is TODO for cases when token and tokenB has different decimals
+        // this is TODO for cases when tokenA and tokenB has different decimals
         uint256 comissionA = (feeAmount * ratioUint) / 1e18;
         uint256 comissionB = feeAmount - comissionA;
 
-        token.transfer(feeAddress, comissionA);
+        tokenA.transfer(feeAddress, comissionA);
         tokenB.transfer(feeAddress, comissionB);
 
         return (amountA - comissionA, amountB - comissionB);
