@@ -85,24 +85,23 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
         onlyOwner
         returns (uint256 amountWithdrawn)
     {
-        if (strategyTokenAmountToWithdraw > 0) {
-            farm.withdraw(farmPoolId, strategyTokenAmountToWithdraw);
+        uint256 balance0 = IERC20(tokenA).balanceOf(address(lpToken));
 
-            uint256 lpAmount = lpToken.balanceOf(address(this));
-            lpToken.approve(address(stargateRouter), lpAmount);
-            stargateRouter.instantRedeemLocal(
-                uint16(poolId),
-                lpToken.balanceOf(address(this)),
-                address(this)
-            );
-        }
+        uint256 amountA = strategyTokenAmountToWithdraw;
+        uint256 liquidityToRemove = (lpToken.totalSupply() * amountA) / balance0;
 
-        uint256 amountA = tokenA.balanceOf(address(this));
+        farm.withdraw(farmPoolId, liquidityToRemove);
+        lpToken.approve(address(stargateRouter), liquidityToRemove);
 
-        if (amountA > 0) {
-            tokenA.transfer(msg.sender, amountA);
-            return amountA;
-        }
+        stargateRouter.instantRedeemLocal(
+            uint16(poolId),
+            lpToken.balanceOf(address(this)),
+            address(this)
+        );
+
+       
+        tokenA.transfer(msg.sender, amountA);
+        return amountA;
     }
 
     function compound() external override onlyOwner {
