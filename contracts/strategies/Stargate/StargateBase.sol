@@ -105,14 +105,14 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
     }
 
     function compound() external override onlyOwner {
-        // inside withdraw happens BSW rewards collection
+        // inside withdraw happens STG rewards collection
         farm.withdraw(poolId, 0);
-        // use balance because BSW is harvested on deposit and withdraw calls
-        uint256 bswAmount = stg.balanceOf(address(this));
+        // use balance because STG is harvested on deposit and withdraw calls
+        uint256 stgAmount = stg.balanceOf(address(this));
 
-        if (bswAmount > 0) {
+        if (stgAmount > 0) {
             fix_leftover(0);
-            sellReward(bswAmount);
+            sellReward(stgAmount);
             uint256 balanceA = tokenA.balanceOf(address(this));
             uint256 balanceB = tokenB.balanceOf(address(this));
 
@@ -142,20 +142,7 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
         uint256 _totalSupply = lpToken.totalSupply();
         // this formula is from uniswap.remove_liquidity -> uniswapPair.burn function
         uint256 balanceA = tokenA.balanceOf(address(lpToken));
-        uint256 balanceB = tokenB.balanceOf(address(lpToken));
         uint256 amountA = (liquidity * balanceA) / _totalSupply;
-        uint256 amountB = (liquidity * balanceB) / _totalSupply;
-
-        if (amountB > 0) {
-            address token0 = IUniswapV2Pair(address(lpToken)).token0();
-
-            (uint256 _reserve0, uint256 _reserve1) = token0 == address(tokenB)
-                ? (balanceB, balanceA)
-                : (balanceA, balanceB);
-
-            // convert amountB to amount tokenA
-            amountA += stargateRouter.quote(amountB, _reserve0, _reserve1);
-        }
 
         return amountA;
     }
@@ -201,10 +188,10 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
     }
 
     // swap stg for tokenA & tokenB in proportions 50/50
-    function sellReward(uint256 bswAmount) private returns (uint256 receivedA, uint256 receivedB) {
+    function sellReward(uint256 stgAmount) private returns (uint256 receivedA, uint256 receivedB) {
         // sell for lp ratio
-        uint256 amountA = bswAmount / 2;
-        uint256 amountB = bswAmount - amountA;
+        uint256 amountA = stgAmount / 2;
+        uint256 amountB = stgAmount - amountA;
 
         Exchange exchange = strategyRouter.getExchange();
         stg.transfer(address(exchange), amountA);
