@@ -32,6 +32,6 @@ interface IStargateFarm {
     function emergencyWithdraw(uint256 _pid) external;
 
     function setStargatePerBlock(uint256 _stargatePerBlock) external;
-
+    function userInfo ( uint256, address ) external view returns ( uint256 amount, uint256 rewardDebt );
     // Override the renounce ownership inherited by zeppelin ownable
 }
