@@ -31,7 +31,6 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
 
     uint256 internal immutable poolId;
 
-    uint256 private immutable LEFTOVER_THRESHOLD_TOKEN_B;
     uint256 private constant PERCENT_DENOMINATOR = 10000;
 
     modifier onlyUpgrader() {
@@ -141,7 +140,7 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
             uint256 lpAmount = lpToken.balanceOf(address(this));
             lpToken.approve(address(stargateRouter), lpAmount);
             stargateRouter.instantRedeemLocal(
-                poolId,
+                uint16(poolId),
                 lpToken.balanceOf(address(this)),
                 address(this)
             );
