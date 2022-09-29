@@ -112,7 +112,6 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
         uint256 stgAmount = stg.balanceOf(address(this));
 
         if (stgAmount > 0) {
-            fix_leftover(0);
             sellReward(stgAmount);
             uint256 balanceA = tokenA.balanceOf(address(this));
 
@@ -155,25 +154,6 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
         if (amountA > 0) {
             tokenA.transfer(msg.sender, amountA);
             return amountA;
-        }
-    }
-
-    /// @dev Swaps leftover tokens for a better ratio for LP.
-    function fix_leftover(uint256 amountIgnore) private {
-        Exchange exchange = strategyRouter.getExchange();
-        uint256 amountB = tokenB.balanceOf(address(this));
-        uint256 amountA = tokenA.balanceOf(address(this)) - amountIgnore;
-        uint256 toSwap;
-        if (amountB > amountA && (toSwap = amountB - amountA) > LEFTOVER_THRESHOLD_TOKEN_B) {
-            uint256 dexFee = exchange.getFee(toSwap / 2, address(tokenA), address(tokenB));
-            toSwap = calculateSwapAmount(toSwap / 2, dexFee);
-            tokenB.transfer(address(exchange), toSwap);
-            exchange.swap(toSwap, address(tokenB), address(tokenA), address(this));
-        } else if (amountA > amountB && (toSwap = amountA - amountB) > LEFTOVER_THRESHOLD_TOKEN_A) {
-            uint256 dexFee = exchange.getFee(toSwap / 2, address(tokenA), address(tokenB));
-            toSwap = calculateSwapAmount(toSwap / 2, dexFee);
-            tokenA.transfer(address(exchange), toSwap);
-            exchange.swap(toSwap, address(tokenA), address(tokenB), address(this));
         }
     }
 
