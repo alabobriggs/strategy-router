@@ -74,8 +74,9 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
 
         stargateRouter.addLiquidity(poolId, amount, address(this));
 
-        lpToken.approve(address(farm), amount);
-        farm.deposit(poolId, amount);
+        uint256 lpAmount = lpToken.balanceOf(address(this));
+        lpToken.approve(address(farm), lpAmount);
+        farm.deposit(poolId, lpAmount);
     }
 
     function withdraw(uint256 strategyTokenAmountToWithdraw)
@@ -114,21 +115,10 @@ contract StargateBase is Initializable, UUPSUpgradeable, OwnableUpgradeable, ISt
             fix_leftover(0);
             sellReward(stgAmount);
             uint256 balanceA = tokenA.balanceOf(address(this));
-            uint256 balanceB = tokenB.balanceOf(address(this));
 
             tokenA.approve(address(stargateRouter), balanceA);
-            tokenB.approve(address(stargateRouter), balanceB);
 
-            stargateRouter.addLiquidity(
-                address(tokenA),
-                address(tokenB),
-                balanceA,
-                balanceB,
-                0,
-                0,
-                address(this),
-                block.timestamp
-            );
+            stargateRouter.addLiquidity(poolId, balanceA, address(this));
 
             uint256 lpAmount = lpToken.balanceOf(address(this));
             lpToken.approve(address(farm), lpAmount);
